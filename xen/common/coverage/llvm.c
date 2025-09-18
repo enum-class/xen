@@ -44,13 +44,146 @@
     ((uint64_t)'f' << 16) | ((uint64_t)'R' << 8)  | ((uint64_t)129)
 #endif
 
-#define LLVM_PROFILE_VERSION    4
-#define LLVM_PROFILE_NUM_KINDS  2
+/*
+ * Since Xen uses the llvm code coverage support without the run time library
+ * __llvm_profile_runtime must be defined according to the docs at:
+ *
+ * https://clang.llvm.org/docs/SourceBasedCodeCoverage.html
+ */
+int __llvm_profile_runtime;
+
+extern char __start___llvm_prf_data[];
+extern char __stop___llvm_prf_data[];
+extern char __start___llvm_prf_names[];
+extern char __stop___llvm_prf_names[];
+extern char __start___llvm_prf_cnts[];
+extern char __stop___llvm_prf_cnts[];
+extern char __start___llvm_prf_bits[];
+extern char __stop___llvm_prf_bits[];
+
+#define START_DATA      ((const char *)__start___llvm_prf_data)
+#define END_DATA        ((const char *)__stop___llvm_prf_data)
+#define START_NAMES     ((const char *)__start___llvm_prf_names)
+#define END_NAMES       ((const char *)__stop___llvm_prf_names)
+#define START_COUNTERS  ((char *)__start___llvm_prf_cnts)
+#define END_COUNTERS    ((char *)__stop___llvm_prf_cnts)
+#define START_BITS      ((char *)__start___llvm_prf_bits)
+#define STOP_BITS       ((char *)__stop___llvm_prf_bits)
+
+#if __clang_major__ == 19
+#define LLVM_PROFILE_VERSION    10
+#define LLVM_PROFILE_NUM_KINDS  3
 
 struct llvm_profile_data {
     uint64_t name_ref;
     uint64_t function_hash;
-    void *counter;
+    void *relative_counter;
+    void *relative_bitmap;
+    void *function;
+    void *values;
+    uint32_t nr_counters;
+    uint16_t nr_value_sites[LLVM_PROFILE_NUM_KINDS];
+    uint32_t numbitmap_bytes;
+};
+
+struct llvm_profile_header {
+    uint64_t magic;
+    uint64_t version;
+    uint64_t binary_ids_size;
+    uint64_t num_data;
+    uint64_t padding_bytes_before_counters;
+    uint64_t num_counters;
+    uint64_t padding_bytes_after_counters;
+    uint64_t num_bitmap_bytes;
+    uint64_t padding_bytes_after_bitmap_bytes;
+    uint64_t names_size;
+    uint64_t counters_delta;
+    uint64_t bitmap_delta;
+    uint64_t names_delta;
+    uint64_t num_vtables;
+    uint64_t vnames_size;
+    uint64_t value_kind_last;
+};
+
+struct llvm_profile_header get_header(void) {
+    return (struct llvm_profile_header) {
+        .magic = LLVM_PROFILE_MAGIC,
+        .version = LLVM_PROFILE_VERSION,
+        .binary_ids_size = 0,
+        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .padding_bytes_before_counters = 0,
+        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .padding_bytes_after_counters = 0,
+        //.num_bitmap_bytes = ,//TODO
+        //.padding_bytes_after_bitmap_bytes = 0,//TODO,
+        .names_size = (END_NAMES - START_NAMES) * sizeof(char),
+        .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
+        //.bitmap_delta = ,//TODO
+        .names_delta = (uintptr_t)START_NAMES,
+        //.num_vtables = ,//TODO
+        //.vnames_size = ,//TODO
+        .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
+    };
+}
+
+#elif __clang_major__ == 18
+#define LLVM_PROFILE_VERSION    9
+#define LLVM_PROFILE_NUM_KINDS  2
+struct llvm_profile_data {
+    uint64_t name_ref;
+    uint64_t function_hash;
+    void *relative_counter;
+    void *relative_bitmap;
+    void *function;
+    void *values;
+    uint32_t nr_counters;
+    uint16_t nr_value_sites[LLVM_PROFILE_NUM_KINDS];
+    uint32_t numbitmap_bytes;
+};
+
+struct llvm_profile_header {
+    uint64_t magic;
+    uint64_t version;
+    uint64_t binary_ids_size;
+    uint64_t num_data;
+    uint64_t padding_bytes_before_counters;
+    uint64_t num_counters;
+    uint64_t padding_bytes_after_counters;
+    uint64_t num_bitmap_bytes;
+    uint64_t padding_bytes_after_bitmap_bytes;
+    uint64_t names_size;
+    uint64_t counters_delta;
+    uint64_t bitmap_delta;
+    uint64_t names_delta;
+    uint64_t value_kind_last;
+};
+
+struct llvm_profile_header get_header(void) {
+    return (struct llvm_profile_header) {
+        .magic = LLVM_PROFILE_MAGIC,
+        .version = LLVM_PROFILE_VERSION,
+        .binary_ids_size = 0,
+        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .padding_bytes_before_counters = 0,
+        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .padding_bytes_after_counters = 0,
+        //.num_bitmap_bytes = ,//TODO
+        //.padding_bytes_after_bitmap_bytes = //TODO,
+        .names_size = (END_NAMES - START_NAMES) * sizeof(char),
+        .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
+        //.bitmap_delta = ,//TODO
+        .names_delta = (uintptr_t)START_NAMES,
+        .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
+    };
+}
+
+#elif __clang_major__ >= 14 && __clang_major__ <= 17
+#define LLVM_PROFILE_VERSION    8
+#define LLVM_PROFILE_NUM_KINDS  2
+struct llvm_profile_data {
+    uint64_t name_ref;
+    uint64_t function_hash;
+    void *relative_counter;
     void *function;
     void *values;
     uint32_t nr_counters;
@@ -60,35 +193,35 @@ struct llvm_profile_data {
 struct llvm_profile_header {
     uint64_t magic;
     uint64_t version;
+    uint64_t binary_ids_size;
     uint64_t data_size;
-    uint64_t counters_size;
+    uint64_t padding_bytes_before_counters;
+    uint64_t counter_size;
+    uint64_t padding_bytes_after_counters;
     uint64_t names_size;
     uint64_t counters_delta;
     uint64_t names_delta;
     uint64_t value_kind_last;
 };
 
-/*
- * Since Xen uses the llvm code coverage support without the run time library
- * __llvm_profile_runtime must be defined according to the docs at:
- *
- * https://clang.llvm.org/docs/SourceBasedCodeCoverage.html 
- */
-int __llvm_profile_runtime;
-
-extern const struct llvm_profile_data __start___llvm_prf_data[];
-extern const struct llvm_profile_data __stop___llvm_prf_data[];
-extern const char __start___llvm_prf_names[];
-extern const char __stop___llvm_prf_names[];
-extern uint64_t __start___llvm_prf_cnts[];
-extern uint64_t __stop___llvm_prf_cnts[];
-
-#define START_DATA      ((const void *)__start___llvm_prf_data)
-#define END_DATA        ((const void *)__stop___llvm_prf_data)
-#define START_NAMES     ((const void *)__start___llvm_prf_names)
-#define END_NAMES       ((const void *)__stop___llvm_prf_names)
-#define START_COUNTERS  ((void *)__start___llvm_prf_cnts)
-#define END_COUNTERS    ((void *)__stop___llvm_prf_cnts)
+struct llvm_profile_header get_header(void) {
+    return (struct llvm_profile_header) {
+        .magic = LLVM_PROFILE_MAGIC,
+        .version = LLVM_PROFILE_VERSION,
+        .binary_ids_size = 0,
+        .data_size = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .padding_bytes_before_counters = 0,
+        .counter_size = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .padding_bytes_after_counters = 0,
+        .names_size = (END_NAMES - START_NAMES) * sizeof(char),
+        .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
+        .names_delta = (uintptr_t)START_NAMES,
+        .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
+    };
+}
+#else
+#error "Unsupported Clang version"
+#endif
 
 static void cf_check reset_counters(void)
 {
@@ -107,10 +240,8 @@ static int cf_check dump(
     struct llvm_profile_header header = {
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
-        .data_size = (END_DATA - START_DATA) / sizeof(struct llvm_profile_data),
-        .counters_size = (END_COUNTERS - START_COUNTERS) / sizeof(uint64_t),
         .names_size = END_NAMES - START_NAMES,
-        .counters_delta = (uintptr_t)START_COUNTERS,
+        .counters_delta = (uintptr_t)(START_COUNTERS - START_DATA),
         .names_delta = (uintptr_t)START_NAMES,
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
