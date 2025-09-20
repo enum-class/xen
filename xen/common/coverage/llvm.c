@@ -58,8 +58,6 @@ extern char __start___llvm_prf_names[];
 extern char __stop___llvm_prf_names[];
 extern char __start___llvm_prf_cnts[];
 extern char __stop___llvm_prf_cnts[];
-extern char __start___llvm_prf_bits[];
-extern char __stop___llvm_prf_bits[];
 
 #define START_DATA      ((const char *)__start___llvm_prf_data)
 #define END_DATA        ((const char *)__stop___llvm_prf_data)
@@ -67,10 +65,15 @@ extern char __stop___llvm_prf_bits[];
 #define END_NAMES       ((const char *)__stop___llvm_prf_names)
 #define START_COUNTERS  ((char *)__start___llvm_prf_cnts)
 #define END_COUNTERS    ((char *)__stop___llvm_prf_cnts)
+
+#if __clang_major__ >= 18
+extern char __start___llvm_prf_bits[];
+extern char __stop___llvm_prf_bits[];
 #define START_BITS      ((char *)__start___llvm_prf_bits)
 #define STOP_BITS       ((char *)__stop___llvm_prf_bits)
+#endif
 
-#if __clang_major__ == 19
+#if __clang_major__ >= 19
 #define LLVM_PROFILE_VERSION    10
 #define LLVM_PROFILE_NUM_KINDS  3
 
@@ -105,23 +108,31 @@ struct llvm_profile_header {
     uint64_t value_kind_last;
 };
 
+struct llvm_vtable_profile_data {
+    uint64_t name_hash;
+    void* pointer;
+    uint32_t size;
+};
+
 struct llvm_profile_header get_header(void) {
     return (struct llvm_profile_header) {
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
         .binary_ids_size = 0,
-        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1)
+                - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
         .padding_bytes_before_counters = 0,
-        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1)
+                - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
         .padding_bytes_after_counters = 0,
-        //.num_bitmap_bytes = ,//TODO
-        //.padding_bytes_after_bitmap_bytes = 0,//TODO,
+        .num_bitmap_bytes = (uintptr_t)STOP_BITS - (uintptr_t)START_BITS,
+        .padding_bytes_after_bitmap_bytes = 0,
         .names_size = (END_NAMES - START_NAMES) * sizeof(char),
         .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
-        //.bitmap_delta = ,//TODO
+        .bitmap_delta = (uintptr_t)START_BITS - (uintptr_t)START_DATA,
         .names_delta = (uintptr_t)START_NAMES,
-        //.num_vtables = ,//TODO
-        //.vnames_size = ,//TODO
+        .num_vtables = 0,
+        .vnames_size = 0,
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
 }
@@ -163,15 +174,17 @@ struct llvm_profile_header get_header(void) {
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
         .binary_ids_size = 0,
-        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1)
+                - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
         .padding_bytes_before_counters = 0,
-        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1)
+                - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
         .padding_bytes_after_counters = 0,
-        //.num_bitmap_bytes = ,//TODO
-        //.padding_bytes_after_bitmap_bytes = //TODO,
+        .num_bitmap_bytes = (uintptr_t)STOP_BITS - (uintptr_t)START_BITS,
+        .padding_bytes_after_bitmap_bytes = 0,
         .names_size = (END_NAMES - START_NAMES) * sizeof(char),
         .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
-        //.bitmap_delta = ,//TODO
+        .bitmap_delta = (uintptr_t)START_BITS - (uintptr_t)START_DATA,
         .names_delta = (uintptr_t)START_NAMES,
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
@@ -209,9 +222,11 @@ struct llvm_profile_header get_header(void) {
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
         .binary_ids_size = 0,
-        .data_size = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1) - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .data_size = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1)
+                - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
         .padding_bytes_before_counters = 0,
-        .counter_size = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1) - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .counter_size = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1)
+                - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
         .padding_bytes_after_counters = 0,
         .names_size = (END_NAMES - START_NAMES) * sizeof(char),
         .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
