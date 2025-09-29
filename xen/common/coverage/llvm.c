@@ -252,14 +252,7 @@ static uint32_t cf_check get_size(void)
 static int cf_check dump(
     XEN_GUEST_HANDLE_PARAM(char) buffer, uint32_t *buf_size)
 {
-    struct llvm_profile_header header = {
-        .magic = LLVM_PROFILE_MAGIC,
-        .version = LLVM_PROFILE_VERSION,
-        .names_size = END_NAMES - START_NAMES,
-        .counters_delta = (uintptr_t)(START_COUNTERS - START_DATA),
-        .names_delta = (uintptr_t)START_NAMES,
-        .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
-    };
+    struct llvm_profile_header header = get_header();
     unsigned int off = 0;
 
 #define APPEND_TO_BUFFER(src, size)                             \
