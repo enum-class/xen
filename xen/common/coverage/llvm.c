@@ -50,7 +50,7 @@
 #elif __clang_major__ == 18
 #define LLVM_PROFILE_VERSION    9
 #define LLVM_PROFILE_NUM_KINDS  2
-#elif __clang_major__ >= 14 && __clang_major__ <= 17
+#elif __clang_major__ >= 14
 #define LLVM_PROFILE_VERSION    8
 #define LLVM_PROFILE_NUM_KINDS  2
 #else
@@ -60,12 +60,12 @@
 struct llvm_profile_data {
     uint64_t name_ref;
     uint64_t function_hash;
-    void *relative_counter;
+    intptr_t *relative_counter;
 #if __clang_major__ >= 18
-    void *relative_bitmap;
+    intptr_t *relative_bitmap;
 #endif
-    void *function;
-    void *values;
+    intptr_t *function;
+    intptr_t *values;
     uint32_t nr_counters;
     uint16_t nr_value_sites[LLVM_PROFILE_NUM_KINDS];
 #if __clang_major__ >= 18
@@ -100,7 +100,7 @@ struct llvm_profile_header {
  * Since Xen uses the llvm code coverage support without the run time library
  * __llvm_profile_runtime must be defined according to the docs at:
  *
- * https://clang.llvm.org/docs/SourceBasedCodeCoverage.html
+ * https://clang.llvm.org/docs/SourceBasedCodeCoverage.html 
  */
 int __llvm_profile_runtime;
 
