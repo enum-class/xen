@@ -60,12 +60,12 @@
 struct llvm_profile_data {
     uint64_t name_ref;
     uint64_t function_hash;
-    intptr_t *relative_counter;
+    void *relative_counter;
 #if __clang_major__ >= 18
-    intptr_t *relative_bitmap;
+    void *relative_bitmap;
 #endif
-    intptr_t *function;
-    intptr_t *values;
+    void *function;
+    void *values;
     uint32_t nr_counters;
     uint16_t nr_value_sites[LLVM_PROFILE_NUM_KINDS];
 #if __clang_major__ >= 18
@@ -104,20 +104,19 @@ struct llvm_profile_header {
  */
 int __llvm_profile_runtime;
 
-extern char __start___llvm_prf_data[];
-extern char __stop___llvm_prf_data[];
-extern char __start___llvm_prf_names[];
-extern char __stop___llvm_prf_names[];
-extern char __start___llvm_prf_cnts[];
-extern char __stop___llvm_prf_cnts[];
+extern const struct llvm_profile_data __start___llvm_prf_data[];
+extern const struct llvm_profile_data __stop___llvm_prf_data[];
+extern const char __start___llvm_prf_names[];
+extern const char __stop___llvm_prf_names[];
+extern uint64_t __start___llvm_prf_cnts[];
+extern uint64_t __stop___llvm_prf_cnts[];
 
-#define START_DATA      ((const char *)__start___llvm_prf_data)
-#define END_DATA        ((const char *)__stop___llvm_prf_data)
-#define START_NAMES     ((const char *)__start___llvm_prf_names)
-#define END_NAMES       ((const char *)__stop___llvm_prf_names)
-#define START_COUNTERS  ((char *)__start___llvm_prf_cnts)
-#define END_COUNTERS    ((char *)__stop___llvm_prf_cnts)
-
+#define START_DATA      ((const void *)__start___llvm_prf_data)
+#define END_DATA        ((const void *)__stop___llvm_prf_data)
+#define START_NAMES     ((const void *)__start___llvm_prf_names)
+#define END_NAMES       ((const void *)__stop___llvm_prf_names)
+#define START_COUNTERS  ((void *)__start___llvm_prf_cnts)
+#define END_COUNTERS    ((void *)__stop___llvm_prf_cnts)
 
 static void cf_check reset_counters(void)
 {
@@ -137,15 +136,15 @@ static int cf_check dump(
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
         .binary_ids_size = 0,
-        .num_data = (((intptr_t)END_DATA + sizeof(struct llvm_profile_data) - 1)
-                - (intptr_t)START_DATA) / sizeof(struct llvm_profile_data),
+        .num_data = ((END_DATA + sizeof(struct llvm_profile_data) - 1)
+                - START_DATA) / sizeof(struct llvm_profile_data),
         .padding_bytes_before_counters = 0,
-        .num_counters = (((intptr_t)END_COUNTERS + sizeof(uint64_t) - 1)
-                - (intptr_t)START_COUNTERS) / sizeof(uint64_t),
+        .num_counters = ((END_COUNTERS + sizeof(uint64_t) - 1)
+                - START_COUNTERS) / sizeof(uint64_t),
         .padding_bytes_after_counters = 0,
-        .names_size = (END_NAMES - START_NAMES) * sizeof(char),
-        .counters_delta = (uintptr_t)START_COUNTERS - (uintptr_t)START_DATA,
-        .names_delta = (uintptr_t)START_NAMES,
+        .names_size = END_NAMES - START_NAMES,
+        .counters_delta = START_COUNTERS - START_DATA,
+        .names_delta = START_NAMES,
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
     unsigned int off = 0;
