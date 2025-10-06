@@ -34,6 +34,7 @@
 #include "xg_core.h"
 #include <xen/hvm/params.h>
 #include <xen/grant_table.h>
+#include <xen/io/console.h>
 
 /* ------------------------------------------------------------------------ */
 
@@ -425,6 +426,41 @@ int xc_dom_gnttab_init(struct xc_dom_image *dom)
     return xc_dom_gnttab_seed(dom->xch, dom->guest_domid, is_hvm,
                               console_gfn, xenstore_gfn,
                               dom->console_domid, dom->xenstore_domid);
+}
+
+static int dom_console_init(xc_interface *xch,
+                            uint32_t domid,
+                            xen_pfn_t console_gfn,
+                            bool clear)
+{
+    const size_t size = PAGE_SIZE;
+    struct xencons_interface *xencons = xc_map_foreign_range(
+        xch, domid, size, PROT_WRITE, console_gfn);
+
+    if ( xencons == NULL )
+        return -1;
+
+    if (clear)
+        memset(xencons, 0, size);
+    xencons->connection = XENCONSOLE_DISCONNECTED;
+
+    munmap(xencons, size);
+    xc_domain_cacheflush(xch, domid, console_gfn, 1);
+    return 0;
+}
+
+int xc_dom_console_init(xc_interface *xch,
+                        uint32_t domid,
+                        xen_pfn_t console_gfn)
+{
+    return dom_console_init(xch, domid, console_gfn, true);
+}
+
+int xc_dom_console_set_disconnected(xc_interface *xch,
+                                    uint32_t domid,
+                                    xen_pfn_t console_gfn)
+{
+    return dom_console_init(xch, domid, console_gfn, false);
 }
 
 /*

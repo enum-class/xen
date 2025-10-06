@@ -166,7 +166,7 @@ LDLIBS-$(CONFIG_Linux) += -luuid
 LDLIBS-$(CONFIG_Linux) += -lrt
 LDLIBS-$(CONFIG_ARM) += -lfdt
 LDLIBS-y += $(PTHREAD_LIBS)
-LDLIBS-y += -lyajl
+LDLIBS-y += $(XEN_JSON_LIBS)
 LDLIBS += $(LDLIBS-y)
 
 $(OBJS-y) $(PIC_OBJS) $(LIBXL_TEST_OBJS): CFLAGS += $(CFLAGS_LIBXL) -include $(XEN_ROOT)/tools/config.h
@@ -226,7 +226,7 @@ testidl.o: $(XEN_INCLUDE)/libxl.h
 # This exploits the 'multi-target pattern rule' trick.
 # gentypes.py should be executed only once to make all the targets.
 _libxl_type%.h _libxl_type%_json.h _libxl_type%_private.h _libxl_type%.c: libxl_type%.idl gentypes.py idl.py
-	$(PYTHON) gentypes.py libxl_type$(*F).idl __libxl_type$(*F).h __libxl_type$(*F)_private.h \
+	$(PYTHON) gentypes.py $(if $(filter -ljson-c,$(XEN_JSON_LIBS)),--libjsonc) libxl_type$(*F).idl __libxl_type$(*F).h __libxl_type$(*F)_private.h \
 		__libxl_type$(*F)_json.h  __libxl_type$(*F).c
 	$(call move-if-changed,__libxl_type$(*F).h,_libxl_type$(*F).h)
 	$(call move-if-changed,__libxl_type$(*F)_private.h,_libxl_type$(*F)_private.h)
@@ -246,7 +246,7 @@ libxenlight_test.so: $(PIC_OBJS) $(LIBXL_TEST_OBJS)
 	$(CC) $(LDFLAGS) -Wl,$(SONAME_LDFLAG) -Wl,libxenlight.so.$(MAJOR) $(SHLIB_LDFLAGS) -o $@ $^ $(LDLIBS) $(APPEND_LDFLAGS)
 
 test_%: test_%.o test_common.o libxenlight_test.so
-	$(CC) $(LDFLAGS) -o $@ $^ $(filter-out %libxenlight.so, $(LDLIBS_libxenlight)) $(LDLIBS_libxentoollog) $(LDLIBS_libxentoolcore) -lyajl $(APPEND_LDFLAGS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(filter-out %libxenlight.so, $(LDLIBS_libxenlight)) $(LDLIBS_libxentoollog) $(LDLIBS_libxentoolcore) $(XEN_JSON_LIBS) $(APPEND_LDFLAGS)
 
 libxl-save-helper: $(SAVE_HELPER_OBJS) libxenlight.so
 	$(CC) $(LDFLAGS) -o $@ $(SAVE_HELPER_OBJS) $(LDLIBS_libxentoollog) $(LDLIBS_libxenctrl) $(LDLIBS_libxenguest) $(LDLIBS_libxentoolcore) $(APPEND_LDFLAGS)
