@@ -84,8 +84,8 @@ struct llvm_profile_header {
     uint64_t num_bitmap_bytes;
     uint64_t padding_bytes_after_bitmap_bytes;
     uint64_t names_size;
-#if __clang_major__ >= 18
     uint64_t counters_delta;
+#if __clang_major__ >= 18
     uint64_t bitmap_delta;
 #endif
     uint64_t names_delta;
@@ -144,7 +144,14 @@ static int cf_check dump(
         .padding_bytes_after_counters = 0,
         .names_size = END_NAMES - START_NAMES,
         .counters_delta = START_COUNTERS - START_DATA,
-        .names_delta = START_NAMES,
+#if __clang_major__ >= 18
+        .bitmap_delta = 0,
+#endif
+        .names_delta = (uintptr_t)START_NAMES,
+#if __clang_major__ >= 19
+        .num_vtables = 0,
+        .vnames_size = 0,
+#endif
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
     unsigned int off = 0;
