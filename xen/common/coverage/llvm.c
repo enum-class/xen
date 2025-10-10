@@ -60,7 +60,7 @@
 #define LLVM_PROFILE_VERSION    5
 #define LLVM_PROFILE_NUM_KINDS  2
 #else
-#error "Unsupported Clang version"
+#error "LLVM coverage selected but an unsupported clang version is used"
 #endif
 
 struct llvm_profile_data {
