@@ -161,8 +161,8 @@ static int cf_check dump(
         .names_size = END_NAMES - START_NAMES,
 #if __clang_major__ >= 14
         .counters_delta = START_COUNTERS - START_DATA,
-#elif
-        .counters_delta = (uintptr_t)START_COUNTERS
+#else
+        .counters_delta = (uintptr_t)START_COUNTERS,
 #endif
 
 #if __clang_major__ >= 18
