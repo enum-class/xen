@@ -67,14 +67,14 @@ struct llvm_profile_data {
     uint64_t name_ref;
     uint64_t function_hash;
     void *relative_counter;
-#if __clang_major__ >= 18
+#if LLVM_PROFILE_VERSION >= 9
     void *relative_bitmap;
 #endif
     void *function;
     void *values;
     uint32_t nr_counters;
     uint16_t nr_value_sites[LLVM_PROFILE_NUM_KINDS];
-#if __clang_major__ >= 18
+#if LLVM_PROFILE_VERSION >= 9
     uint32_t numbitmap_bytes;
 #endif
 };
@@ -82,24 +82,24 @@ struct llvm_profile_data {
 struct llvm_profile_header {
     uint64_t magic;
     uint64_t version;
-#if __clang_major__ >= 13
+#if LLVM_PROFILE_VERSION >= 7
     uint64_t binary_ids_size;
 #endif
     uint64_t num_data;
     uint64_t padding_bytes_before_counters;
     uint64_t num_counters;
     uint64_t padding_bytes_after_counters;
-#if __clang_major__ >= 18
+#if LLVM_PROFILE_VERSION >= 9
     uint64_t num_bitmap_bytes;
     uint64_t padding_bytes_after_bitmap_bytes;
 #endif
     uint64_t names_size;
     uint64_t counters_delta;
-#if __clang_major__ >= 18
+#if LLVM_PROFILE_VERSION >= 9
     uint64_t bitmap_delta;
 #endif
     uint64_t names_delta;
-#if __clang_major__ >= 19 && __clang_major__ <= 20
+#if LLVM_PROFILE_VERSION == 10
     uint64_t num_vtables;
     uint64_t vnames_size;
 #endif
@@ -145,34 +145,15 @@ static int cf_check dump(
     struct llvm_profile_header header = {
         .magic = LLVM_PROFILE_MAGIC,
         .version = LLVM_PROFILE_VERSION,
-#if __clang_major__ >= 13
-        .binary_ids_size = 0,
-#endif
-        .num_data = ((END_DATA + sizeof(struct llvm_profile_data) - 1)
-                - START_DATA) / sizeof(struct llvm_profile_data),
-        .padding_bytes_before_counters = 0,
-        .num_counters = ((END_COUNTERS + sizeof(uint64_t) - 1)
-                - START_COUNTERS) / sizeof(uint64_t),
-        .padding_bytes_after_counters = 0,
-#if __clang_major__ >= 18
-        .num_bitmap_bytes = 0,
-        .padding_bytes_after_bitmap_bytes = 0,
-#endif
+        .num_data = DIV_ROUND_UP(END_DATA - START_DATA, sizeof(uint64_t)),
+        .num_counters = DIV_ROUND_UP(END_COUNTERS - START_COUNTERS, sizeof(uint64_t)),
         .names_size = END_NAMES - START_NAMES,
-#if __clang_major__ >= 14
+#if LLVM_PROFILE_VERSION >= 8
         .counters_delta = START_COUNTERS - START_DATA,
 #else
         .counters_delta = (uintptr_t)START_COUNTERS,
 #endif
-
-#if __clang_major__ >= 18
-        .bitmap_delta = 0,
-#endif
         .names_delta = (uintptr_t)START_NAMES,
-#if __clang_major__ >= 19 && __clang_major__ <= 20
-        .num_vtables = 0,
-        .vnames_size = 0,
-#endif
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
     };
     unsigned int off = 0;
