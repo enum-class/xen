@@ -53,7 +53,7 @@ config CC_HAS_ASM_GOTO_OUTPUT
 
 # Compiler supports -fcondition-coverage aka MC/DC
 config CC_HAS_MCDC
-	def_bool $(cc-option,-fcondition-coverage)
+	def_bool $(cc-option,-fcondition-coverage) || $(cc-option,-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc)
 
 # Set code alignment.
 #
