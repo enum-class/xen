@@ -51,9 +51,14 @@ config CC_HAS_ASM_GOTO_OUTPUT
 	depends on !GCC_ASM_GOTO_OUTPUT_BROKEN
 	depends on $(success,echo 'int foo(int x) { asm goto ("": "=r"(x) ::: bar); return x; bar: return 0; }' | $(CC) -x c - -c -o /dev/null)
 
-# Compiler supports -fcondition-coverage aka MC/DC
+# Compiler supports Modified Condition/Decision Coverage (MC/DC).
+# MC/DC is a rigorous code coverage metric that requires every condition
+# within a decision (boolean expression) to be shown to independently
+# influence the decision's final outcome.
+#
+# Minimum toolchain baseline: GCC >= 14, or Clang >= 18.
 config CC_HAS_MCDC
-	def_bool $(cc-option,-fcondition-coverage)
+	def_bool $(cc-option,-fcondition-coverage) || $(cc-option,-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc)
 
 # Set code alignment.
 #
