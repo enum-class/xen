@@ -98,10 +98,8 @@ $(obj)/usercopy.o: CFLAGS-y += -iquote .
 ifneq ($(CONFIG_HVM),y)
 $(obj)/x86_emulate.o: CFLAGS-y += -Wno-unused-label
 endif
-ifeq ($(CONFIG_CONDITION_COVERAGE),y)
-    ifeq ($(CONFIG_CC_IS_GCC),y)
-        $(obj)/x86_emulate.o: CFLAGS-y += -Wno-error=coverage-too-many-conditions
-    endif
+ifeq ($(CONFIG_CONDITION_COVERAGE)$(CONFIG_CC_IS_GCC),yy)
+$(obj)/x86_emulate.o: CFLAGS-y += -Wno-error=coverage-too-many-conditions
 endif
 
 efi-y := $(shell if [ ! -r $(objtree)/include/xen/compile.h -o \

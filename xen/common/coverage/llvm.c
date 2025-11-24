@@ -120,10 +120,8 @@ extern const char __start___llvm_prf_names[];
 extern const char __stop___llvm_prf_names[];
 extern uint64_t __start___llvm_prf_cnts[];
 extern uint64_t __stop___llvm_prf_cnts[];
-#ifdef CONFIG_CONDITION_COVERAGE
 extern const char __start___llvm_prf_bits[];
 extern const char __stop___llvm_prf_bits[];
-#endif
 
 #define START_DATA      ((const void *)__start___llvm_prf_data)
 #define END_DATA        ((const void *)__stop___llvm_prf_data)
@@ -137,18 +135,16 @@ extern const char __stop___llvm_prf_bits[];
 static void cf_check reset_counters(void)
 {
     memset(START_COUNTERS, 0, END_COUNTERS - START_COUNTERS);
-#ifdef CONFIG_CONDITION_COVERAGE
-    memset(START_BITMAP, 0, END_BITMAP - START_BITMAP);
-#endif
+    if ( IS_ENABLED(CONFIG_CONDITION_COVERAGE) )
+        memset(START_BITMAP, 0, END_BITMAP - START_BITMAP);
 }
 
 static uint32_t cf_check get_size(void)
 {
     uint32_t size = ROUNDUP(sizeof(struct llvm_profile_header) + END_DATA - START_DATA +
                    END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES, 8);
-#ifdef CONFIG_CONDITION_COVERAGE
-    size += ROUNDUP(END_BITMAP - START_BITMAP, 8);
-#endif
+    if ( IS_ENABLED(CONFIG_CONDITION_COVERAGE) )
+        size += ROUNDUP(END_BITMAP - START_BITMAP, 8);
     return size;
 }
 
@@ -160,20 +156,18 @@ static int cf_check dump(
         .version = LLVM_PROFILE_VERSION,
         .num_data = DIV_ROUND_UP(END_DATA - START_DATA, sizeof(struct llvm_profile_data)),
         .num_counters = DIV_ROUND_UP(END_COUNTERS - START_COUNTERS, sizeof(uint64_t)),
-#if defined(CONFIG_CONDITION_COVERAGE) && LLVM_PROFILE_VERSION >= 9
-        .num_bitmap_bytes = END_BITMAP - START_BITMAP,
-#endif
         .names_size = END_NAMES - START_NAMES,
 #if LLVM_PROFILE_VERSION >= 8
         .counters_delta = START_COUNTERS - START_DATA,
 #else
         .counters_delta = (uintptr_t)START_COUNTERS,
 #endif
-#if defined(CONFIG_CONDITION_COVERAGE) && LLVM_PROFILE_VERSION >= 9
-        .bitmap_delta = START_BITMAP - START_DATA,
-#endif
         .names_delta = (uintptr_t)START_NAMES,
         .value_kind_last = LLVM_PROFILE_NUM_KINDS - 1,
+#if defined(CONFIG_CONDITION_COVERAGE) && LLVM_PROFILE_VERSION >= 9
+        .num_bitmap_bytes = END_BITMAP - START_BITMAP,
+        .bitmap_delta = START_BITMAP - START_DATA,
+#endif
     };
     unsigned int off = 0;
 
