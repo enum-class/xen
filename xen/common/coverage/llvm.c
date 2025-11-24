@@ -148,6 +148,7 @@ static uint32_t cf_check get_size(void)
                    END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES, 8);
 #ifdef CONFIG_CONDITION_COVERAGE
     size += ROUNDUP(END_BITMAP - START_BITMAP, 8);
+    size += 4242;
 #endif
     return size;
 }
@@ -162,6 +163,8 @@ static int cf_check dump(
         .num_counters = DIV_ROUND_UP(END_COUNTERS - START_COUNTERS, sizeof(uint64_t)),
 #if defined(CONFIG_CONDITION_COVERAGE) && LLVM_PROFILE_VERSION >= 9
         .num_bitmap_bytes = END_BITMAP - START_BITMAP,
+	.padding_bytes_after_bitmap_bytes = ROUNDUP(END_BITMAP - START_BITMAP, 8) - (END_BITMAP - START_BITMAP)
+		+ 4242,
 #endif
         .names_size = END_NAMES - START_NAMES,
 #if LLVM_PROFILE_VERSION >= 8
@@ -191,6 +194,7 @@ static int cf_check dump(
     APPEND_TO_BUFFER(START_BITMAP, END_BITMAP - START_BITMAP);
     printk("APPEND_TO_BUFFER: START_BITMAP: %p, END_BITMAP: %p, size: %ld\n", START_BITMAP, END_BITMAP, END_BITMAP - START_BITMAP);
     off += ROUNDUP(END_BITMAP - START_BITMAP, 8) - (END_BITMAP - START_BITMAP);
+    off += 4242;
 #endif
     APPEND_TO_BUFFER(START_NAMES, END_NAMES - START_NAMES);
 #undef APPEND_TO_BUFFER
