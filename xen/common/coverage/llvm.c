@@ -151,6 +151,7 @@ static uint32_t cf_check get_size(void)
     uint32_t size = sizeof(struct llvm_profile_header) + END_DATA - START_DATA +
                     END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES;
 #ifdef CONFIG_CONDITION_COVERAGE
+    size += END_BITMAP - START_BITMAP;
     size += PADDING_BYTES_AFTER_BITMAP_BYTES;
     size += PADDING_BYTES_AFTER_COUNTERS;
     size += PADDING_BYTES_BEFORE_COUNTERS;
@@ -194,10 +195,10 @@ static int cf_check dump(
     off += (size);                                              \
 })
     APPEND_TO_BUFFER(&header, sizeof(header));
-    off += PADDING_BYTES_BEFORE_COUNTERS;
     APPEND_TO_BUFFER(START_DATA, END_DATA - START_DATA);
-    off += PADDING_BYTES_AFTER_COUNTERS;
+    off += PADDING_BYTES_BEFORE_COUNTERS;
     APPEND_TO_BUFFER(START_COUNTERS, END_COUNTERS - START_COUNTERS);
+    off += PADDING_BYTES_AFTER_COUNTERS;
 #if defined(CONFIG_CONDITION_COVERAGE)
     APPEND_TO_BUFFER(START_BITMAP, END_BITMAP - START_BITMAP);
     printk("APPEND_TO_BUFFER: START_BITMAP: %p, END_BITMAP: %p, size: %ld\n", START_BITMAP, END_BITMAP, END_BITMAP - START_BITMAP);
