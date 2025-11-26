@@ -30,6 +30,10 @@
 
 #include "coverage.h"
 
+#define PADDING_BYTES_BEFORE_COUNTERS 42
+#define PADDING_BYTES_AFTER_COUNTERS 420
+#define PADDING_BYTES_AFTER_BITMAP_BYTES 4200
+
 #ifndef __clang__
 #error "LLVM coverage selected without clang compiler"
 #endif
@@ -144,11 +148,12 @@ static void cf_check reset_counters(void)
 
 static uint32_t cf_check get_size(void)
 {
-    uint32_t size = ROUNDUP(sizeof(struct llvm_profile_header) + END_DATA - START_DATA +
-                   END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES, 8);
+    uint32_t size = sizeof(struct llvm_profile_header) + END_DATA - START_DATA +
+                    END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES;
 #ifdef CONFIG_CONDITION_COVERAGE
-    size += ROUNDUP(END_BITMAP - START_BITMAP, 8);
-    size += 4242;
+    size += PADDING_BYTES_AFTER_BITMAP_BYTES;
+    size += PADDING_BYTES_AFTER_COUNTERS;
+    size += PADDING_BYTES_BEFORE_COUNTERS;
 #endif
     return size;
 }
@@ -163,8 +168,9 @@ static int cf_check dump(
         .num_counters = DIV_ROUND_UP(END_COUNTERS - START_COUNTERS, sizeof(uint64_t)),
 #if defined(CONFIG_CONDITION_COVERAGE) && LLVM_PROFILE_VERSION >= 9
         .num_bitmap_bytes = END_BITMAP - START_BITMAP,
-	.padding_bytes_after_bitmap_bytes = ROUNDUP(END_BITMAP - START_BITMAP, 8) - (END_BITMAP - START_BITMAP)
-		+ 4242,
+        .padding_bytes_after_bitmap_bytes = PADDING_BYTES_AFTER_BITMAP_BYTES,
+        .padding_bytes_after_counters = PADDING_BYTES_AFTER_COUNTERS,
+        .padding_bytes_before_counters = PADDING_BYTES_BEFORE_COUNTERS,
 #endif
         .names_size = END_NAMES - START_NAMES,
 #if LLVM_PROFILE_VERSION >= 8
@@ -188,13 +194,14 @@ static int cf_check dump(
     off += (size);                                              \
 })
     APPEND_TO_BUFFER(&header, sizeof(header));
+    off += PADDING_BYTES_BEFORE_COUNTERS;
     APPEND_TO_BUFFER(START_DATA, END_DATA - START_DATA);
+    off += PADDING_BYTES_AFTER_COUNTERS;
     APPEND_TO_BUFFER(START_COUNTERS, END_COUNTERS - START_COUNTERS);
 #if defined(CONFIG_CONDITION_COVERAGE)
     APPEND_TO_BUFFER(START_BITMAP, END_BITMAP - START_BITMAP);
     printk("APPEND_TO_BUFFER: START_BITMAP: %p, END_BITMAP: %p, size: %ld\n", START_BITMAP, END_BITMAP, END_BITMAP - START_BITMAP);
-    off += ROUNDUP(END_BITMAP - START_BITMAP, 8) - (END_BITMAP - START_BITMAP);
-    off += 4242;
+    off += PADDING_BYTES_AFTER_BITMAP_BYTES;
 #endif
     APPEND_TO_BUFFER(START_NAMES, END_NAMES - START_NAMES);
 #undef APPEND_TO_BUFFER
