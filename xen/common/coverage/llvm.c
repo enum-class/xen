@@ -156,6 +156,16 @@ static uint32_t cf_check get_size(void)
     size += PADDING_BYTES_AFTER_COUNTERS;
     size += PADDING_BYTES_BEFORE_COUNTERS;
 #endif
+
+    // Experiment some common errors:
+    //
+    // 1. This is not going to break "xencov dump" but do break
+    //    llvm-profdata
+    size -= (ROUNDUP(END_NAMES - START_NAMES, 8) - (END_NAMES - START_NAMES));
+    // 2. Now this is breaking "xencov" in the first place
+    size -= 1;
+
+    printk("size = %u\n", size);
     return size;
 }
 
