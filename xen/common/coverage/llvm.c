@@ -149,7 +149,7 @@ static void cf_check reset_counters(void)
 static uint32_t cf_check get_size(void)
 {
     uint32_t size = sizeof(struct llvm_profile_header) + END_DATA - START_DATA +
-                    END_COUNTERS - START_COUNTERS + END_NAMES - START_NAMES;
+                    END_COUNTERS - START_COUNTERS + ROUNDUP(END_NAMES - START_NAMES, 8);
 #ifdef CONFIG_CONDITION_COVERAGE
     size += END_BITMAP - START_BITMAP;
     size += PADDING_BYTES_AFTER_BITMAP_BYTES;
